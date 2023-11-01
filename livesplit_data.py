@@ -3,6 +3,7 @@ import gc
 from dateutil import relativedelta
 import xml.etree.ElementTree as ET
 from statistics import pstdev, mean
+from time import perf_counter
 
 import variables
 
@@ -48,25 +49,24 @@ class LiveSplitData():
             -
         '''
         self.finished_dates, self.finished_times, self.finished_indexes = [], [], []
+        attempt_history = self.xroot.find('AttemptHistory')
 
-        for i, attempt in enumerate(self.xroot.find('AttemptHistory')):
+        for i, attempt in enumerate(attempt_history):
             real_time = attempt.find('RealTime')
-            end_date = attempt.attrib.get('ended')
-            converted_date = datetime.datetime.strptime(end_date[:10], '%m/%d/%Y')
             if real_time is not None:
-                self.finished_dates.append(converted_date)
+                end_date = attempt.attrib.get('ended')
+                self.finished_dates.append(datetime.datetime.strptime(end_date[:10], '%m/%d/%Y'))
                 t = real_time.text
                 self.finished_times.append(datetime.datetime.strptime(t[:t.find('.')], '%H:%M:%S'))
                 self.finished_indexes.append(i+1)
         
         self.AOT_dates, self.AOT_attempts = [], []
 
-        attempt_history = self.xroot.find('AttemptHistory')
-        start_dates = [attempt.attrib.get('started') for attempt in attempt_history]
+        start_dates = [datetime.datetime.strptime(attempt.attrib.get('started')[:10], '%m/%d/%Y') for attempt in attempt_history]
         last_date = None
-
+        
         for i, start_date in enumerate(start_dates):
-            current_date = datetime.datetime.strptime(start_date[:10], '%m/%d/%Y')
+            current_date = start_date
             #initial
             if last_date is None:
                 last_date = current_date
@@ -130,7 +130,7 @@ class LiveSplitData():
         self.seg_indexes = [i for i in range(1, len(self.seg_times)+1)]
         self.avg_seg_times, self.avg_seg_indexes = self.get_averages(self.seg_times)
         
-    def get_averages(self, seg_times) -> tuple:
+    def get_averages(self, seg_times) -> tuple():
         avg_times, avg_indexes = [], []
         start, end = 0, 10
 
